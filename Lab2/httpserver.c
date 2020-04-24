@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 
 #include <pthread.h>
+#include <getopt.h>
 
 #define MAX_CLIENT_COUNT 10
 #define RECV_BUF_SIZE 512
@@ -34,7 +35,7 @@ void reuseAddr(int socketFd){
 }
 
 //在本机启动tcp服务
-int startTcpServer(int portNum){
+int startTcpServer(char *ipAddr, int portNum){
     // 创建套接字 socket
     int httpdSocket = socket(AF_INET,SOCK_STREAM,0);
     if(httpdSocket==-1){
@@ -48,7 +49,7 @@ int startTcpServer(int portNum){
     tcpServerSockAddr.sin_family = AF_INET;
     tcpServerSockAddr.sin_port = htons(portNum);        //设置端口  htons()作用是将端口号由主机字节序转换为网络字节序的整数值
     //地址0.0.0.0 表示本机
-    tcpServerSockAddr.sin_addr.s_addr = 0;
+    tcpServerSockAddr.sin_addr.s_addr = inet_addr(ipAddr);
     reuseAddr(httpdSocket);
 
     if(bind(httpdSocket,(const struct sockaddr*)&tcpServerSockAddr,     //强制类型转换 sockaddr_in 转换为 sockaddr
@@ -350,13 +351,23 @@ void* responseBrowserRequest(void* ptr){
 }
 
 int main(int argc,char* argv[]){
+    //长选项
+    char *string = "a:b:c:d";
+    static struct option long_options[] =
+    {  
+        {"ip", required_argument, NULL, '1'},
+        {"port", required_argument, NULL, '1'},
+        {"number-thread", required_argument, NULL,'1'},
+        {NULL,  0,   NULL, 0},
+    }; 
     //判断命令是否正确
-    if(argc < 2){
-        fprintf(stderr,"USAGE: %s portNum\n",argv[0]);
+    if(argc < 7){
+        fprintf(stderr,"USAGE: %s --ip IPaddr --port portNum --number-thread threadNum\n",argv[0]);
         exit(1);
     }
-    int portNum = atoi(argv[1]);
+    int portNum = atoi(argv[4]);
     port = portNum;
+    char *ipAddr=argv[2];
 
     //限定开启http服务的端口号为1024~65535或者是80
     if((portNum!=80)&&(portNum<1024 || portNum>65535)){
@@ -364,7 +375,7 @@ int main(int argc,char* argv[]){
         exit(1);
     }
 
-    int httpdSocket = startTcpServer(portNum);
+    int httpdSocket = startTcpServer(ipAddr, portNum);
 
     while(1){
         struct sockaddr_in browserSocketAddr;
