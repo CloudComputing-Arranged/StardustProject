@@ -1,4 +1,3 @@
-//启动http服务器命令：  ./fhttpd 端口号
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -368,6 +367,7 @@ int main(int argc,char* argv[]){
     int portNum = atoi(argv[4]);
     port = portNum;
     char *ipAddr=argv[2];
+    int nt = atoi(argv[6]);
 
     //限定开启http服务的端口号为1024~65535或者是80
     if((portNum!=80)&&(portNum<1024 || portNum>65535)){
@@ -376,6 +376,8 @@ int main(int argc,char* argv[]){
     }
 
     int httpdSocket = startTcpServer(ipAddr, portNum);
+    pthread_t responseThread[nt];
+    int ntn = 0, ntc = 0;
 
     while(1){
         struct sockaddr_in browserSocketAddr;
@@ -388,10 +390,12 @@ int main(int argc,char* argv[]){
         }
         printf("%s:%d linked !\n",inet_ntoa(browserSocketAddr.sin_addr),
             browserSocketAddr.sin_port);        //输出请求方地址及端口
-        pthread_t responseThread;
+        
         //创建线程处理浏览器请求
-        int threadReturn = pthread_create(&responseThread,
+        if(ntn >= nt) { pthread_join(responseThread[ntc],NULL); ntc=(ntc+1)%nt; ntn--;}
+        int threadReturn = pthread_create(&responseThread[ntn],
             NULL,responseBrowserRequest,&browserSocket);
+        ntn++;
         // 如果pthread_create返回不为0,表示发生错误
         if(threadReturn){
             fprintf(stderr,"Error: fail to create thread, error is %d\n",threadReturn);
